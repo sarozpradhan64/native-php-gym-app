@@ -1,6 +1,10 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Home, ClipboardList, TrendingUp, Settings, Dumbbell } from 'lucide-react-native';
+import { useSQLiteContext } from 'expo-sqlite';
+import { useEffect, useState } from 'react';
+import { View, ActivityIndicator } from 'react-native';
+import { useUserStore, UserProfile } from '../store/useUserStore';
 
 import DashboardScreen from '../screens/DashboardScreen';
 import PlansScreen from '../screens/PlansScreen';
@@ -9,10 +13,12 @@ import ProgressScreen from '../screens/ProgressScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import ActiveSessionScreen from '../screens/ActiveSessionScreen';
 import ExercisesScreen from '../screens/ExercisesScreen';
+import OnboardingScreen from '../screens/OnboardingScreen';
 
 const Tab = createBottomTabNavigator();
 const HomeStack = createNativeStackNavigator();
 const PlansStack = createNativeStackNavigator();
+const RootStack = createNativeStackNavigator();
 
 function HomeStackNavigator() {
   return (
@@ -32,7 +38,7 @@ function PlansStackNavigator() {
   );
 }
 
-export default function AppNavigator() {
+function MainTabNavigator() {
   return (
     <Tab.Navigator
       screenOptions={{
@@ -76,5 +82,44 @@ export default function AppNavigator() {
         options={{ tabBarIcon: ({ color, size }) => <Settings color={color} size={size} /> }}
       />
     </Tab.Navigator>
+  );
+}
+
+export default function AppNavigator() {
+  const db = useSQLiteContext();
+  const { profile, setProfile, isLoading, setIsLoading } = useUserStore();
+
+  useEffect(() => {
+    async function loadProfile() {
+      try {
+        const result = await db.getFirstAsync<UserProfile>('SELECT name, birthday, weight, height FROM user_profile WHERE id = 1');
+        if (result) {
+          setProfile(result);
+        }
+      } catch (e) {
+        console.error('Failed to load user profile', e);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadProfile();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#131313', justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator color="#f2ca50" size="large" />
+      </View>
+    );
+  }
+
+  return (
+    <RootStack.Navigator screenOptions={{ headerShown: false }}>
+      {!profile ? (
+        <RootStack.Screen name="Onboarding" component={OnboardingScreen} />
+      ) : (
+        <RootStack.Screen name="Main" component={MainTabNavigator} />
+      )}
+    </RootStack.Navigator>
   );
 }

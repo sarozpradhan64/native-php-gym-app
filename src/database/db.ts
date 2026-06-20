@@ -64,6 +64,14 @@ export async function initializeDatabase(db: SQLite.SQLiteDatabase) {
       thigh_cm REAL,
       notes TEXT
     );
+    CREATE TABLE IF NOT EXISTS user_profile (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      name TEXT NOT NULL,
+      birthday TEXT,
+      weight REAL,
+      height REAL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   // Migration for existing tables to add local_image_uri

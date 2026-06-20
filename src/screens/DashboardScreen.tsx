@@ -3,6 +3,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSessionStore } from '../store/useSessionStore';
+import { useUserStore } from '../store/useUserStore';
 import { Flame, Zap, ChevronRight, Calendar, Dumbbell } from 'lucide-react-native';
 
 interface RecentSession {
@@ -57,6 +58,7 @@ export default function DashboardScreen({ navigation }: any) {
   const db = useSQLiteContext();
   const startSession = useSessionStore(state => state.startSession);
   const activeSessionId = useSessionStore(state => state.activeSessionId);
+  const profile = useUserStore(state => state.profile);
 
   const [streak, setStreak] = useState(0);
   const [recentSessions, setRecentSessions] = useState<RecentSession[]>([]);
@@ -146,7 +148,7 @@ export default function DashboardScreen({ navigation }: any) {
       <View className="flex-row justify-between items-center mb-6">
         <View>
           <Text className="text-3xl font-bold text-on-surface">GymTracker</Text>
-          <Text className="text-sm text-on-variant mt-0.5">Let's get to work 💪</Text>
+          <Text className="text-sm text-on-variant mt-0.5">Let's get to work, {profile?.name ? profile.name.split(' ')[0] : 'Athlete'} 💪</Text>
         </View>
         <View className="items-center bg-surface-container border border-surface-bright rounded-2xl px-4 py-2">
           <Flame color="#f2ca50" size={18} />
