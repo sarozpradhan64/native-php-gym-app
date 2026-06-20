@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Blaze Fitness",
-    "slug": "blaze-fitness",
+    "slug": "react-native-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -35,6 +35,7 @@
           "sounds": []
         }
       ]
-    ]
+    ],
+    "owner": "blazesrz"
   }
 }
