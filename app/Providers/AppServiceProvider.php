@@ -21,5 +21,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         URL::forceHttps();
+
+        \Illuminate\Support\Facades\Blade::component(\Native\Mobile\Edge\Components\Navigation\BottomNav::class, 'native-bottom-nav');
+        \Illuminate\Support\Facades\Blade::component(\Native\Mobile\Edge\Components\Navigation\BottomNavItem::class, 'native-bottom-nav-item');
     }
 }

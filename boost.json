@@ -10,6 +10,9 @@
     "sail": false,
     "skills": [
         "laravel-best-practices",
-        "pest-testing"
+        "livewire-development",
+        "volt-development",
+        "pest-testing",
+        "tailwindcss-development"
     ]
 }

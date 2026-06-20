@@ -16,28 +16,35 @@
         </main>
 
         {{-- Native Bottom Navigation --}}
-        <native:bottom-nav>
-            <native:bottom-nav-item
+        <x-native-bottom-nav>
+            <x-native-bottom-nav-item
                 id="home"
                 icon="house.fill"
                 label="Home"
                 url="/"
                 :active="request()->is('/')"
             />
-            <native:bottom-nav-item
-                id="explore"
-                icon="magnifyingglass"
-                label="Explore"
-                url="/explore"
-                :active="request()->is('explore*')"
+            <x-native-bottom-nav-item
+                id="plans"
+                icon="list.bullet.clipboard.fill"
+                label="Plans"
+                url="/plans"
+                :active="request()->is('plans*')"
             />
-            <native:bottom-nav-item
+            <x-native-bottom-nav-item
+                id="progress"
+                icon="chart.xyaxis.line"
+                label="Progress"
+                url="/progress"
+                :active="request()->is('progress*')"
+            />
+            <x-native-bottom-nav-item
                 id="settings"
                 icon="gearshape.fill"
                 label="Settings"
                 url="/settings"
                 :active="request()->is('settings*')"
             />
-        </native:bottom-nav>
+        </x-native-bottom-nav>
     </body>
 </html>

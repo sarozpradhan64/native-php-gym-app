@@ -21,6 +21,8 @@
         "php": "^8.2",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
+        "livewire/livewire": "^4.3",
+        "livewire/volt": "^1.10",
         "nativephp/mobile": "^3.0"
     },
     "require-dev": {
