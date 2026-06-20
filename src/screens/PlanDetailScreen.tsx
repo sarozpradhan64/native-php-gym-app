@@ -2,13 +2,13 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
   TextInput,
   Alert,
 } from 'react-native';
+import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Trash2, Pencil, X } from 'lucide-react-native';
+import { ArrowLeft, Trash2, Pencil, X, GripVertical } from 'lucide-react-native';
 
 interface PlanExercise {
   id: number;
@@ -44,11 +44,15 @@ function ExerciseCard({
   onDelete,
   onUpdateName,
   onUpdateSetsReps,
+  drag,
+  isActive,
 }: {
   ex: PlanExercise;
   onDelete: (id: number) => void;
   onUpdateName: (id: number, exerciseId: number, name: string, muscle: string) => void;
   onUpdateSetsReps: (id: number, field: 'target_sets' | 'target_reps', value: string) => void;
+  drag: () => void;
+  isActive: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(ex.exercise_name);
@@ -65,7 +69,12 @@ function ExerciseCard({
   };
 
   return (
-    <View style={{ backgroundColor: '#232323', borderRadius: 12, marginBottom: 12, borderWidth: 1, borderColor: '#2d2d2d', overflow: 'hidden' }}>
+    <TouchableOpacity
+      activeOpacity={0.7}
+      onLongPress={drag}
+      delayLongPress={200}
+      style={{ backgroundColor: '#232323', borderRadius: 12, marginBottom: 12, borderWidth: 1, borderColor: isActive ? '#f2ca50' : '#2d2d2d', overflow: 'hidden' }}
+    >
       {/* Header — tap pencil to edit */}
       {editing ? (
         <View style={{ padding: 12, borderBottomWidth: 1, borderBottomColor: '#2d2d2d' }}>
@@ -130,7 +139,7 @@ function ExerciseCard({
           onChangeText={val => onUpdateSetsReps(ex.id, 'target_reps', val)}
         />
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -203,6 +212,13 @@ export default function PlanDetailScreen({ route, navigation }: any) {
     ]);
   };
 
+  const onDragEnd = async ({ data }: { data: PlanExercise[] }) => {
+    setExercises(data);
+    for (let i = 0; i < data.length; i++) {
+      await db.runAsync('UPDATE workout_plan_exercises SET order_index = ? WHERE id = ?', [i, data[i].id]);
+    }
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: '#131313' }}>
       {/* Header */}
@@ -216,76 +232,88 @@ export default function PlanDetailScreen({ route, navigation }: any) {
         </View>
       </View>
 
-      <ScrollView style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16 }} keyboardShouldPersistTaps="handled">
-        {exercises.length === 0 && !showPicker && (
-          <View style={{ alignItems: 'center', paddingVertical: 48 }}>
-            <Text style={{ color: '#6b6b6b', textAlign: 'center' }}>No exercises yet.{'\n'}Tap "+ Add Exercise" to build your plan.</Text>
-          </View>
+      <DraggableFlatList
+        data={exercises}
+        keyExtractor={(item) => item.id.toString()}
+        onDragEnd={onDragEnd}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40 }}
+        keyboardShouldPersistTaps="handled"
+        renderItem={({ item, drag, isActive }: RenderItemParams<PlanExercise>) => (
+          <ScaleDecorator>
+            <ExerciseCard
+              ex={item}
+              onDelete={handleDelete}
+              onUpdateName={handleUpdateName}
+              onUpdateSetsReps={handleUpdateSetsReps}
+              drag={drag}
+              isActive={isActive}
+            />
+          </ScaleDecorator>
         )}
-
-        {exercises.map(ex => (
-          <ExerciseCard
-            key={ex.id}
-            ex={ex}
-            onDelete={handleDelete}
-            onUpdateName={handleUpdateName}
-            onUpdateSetsReps={handleUpdateSetsReps}
-          />
-        ))}
-
-        {/* Add Exercise toggle */}
-        <TouchableOpacity
-          style={{ borderWidth: 2, borderStyle: 'dashed', borderColor: '#2d2d2d', borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginBottom: 12, flexDirection: 'row', justifyContent: 'center' }}
-          onPress={() => setShowPicker(!showPicker)}
-        >
-          <Text style={{ color: '#b3b3b3', fontWeight: '600' }}>{showPicker ? '− Close' : '+ Add Exercise'}</Text>
-        </TouchableOpacity>
-
-        {/* Picker */}
-        {showPicker && (
-          <View style={{ backgroundColor: '#232323', borderRadius: 12, borderWidth: 1, borderColor: '#2d2d2d', marginBottom: 32, overflow: 'hidden' }}>
-            {/* Custom */}
-            <View style={{ padding: 12, borderBottomWidth: 1, borderBottomColor: '#2d2d2d' }}>
-              <Text style={{ color: '#e5e2e1', fontWeight: 'bold', marginBottom: 8 }}>Custom Exercise</Text>
-              <TextInput
-                style={{ backgroundColor: '#2d2d2d', color: '#e5e2e1', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7, marginBottom: 6 }}
-                placeholder="Exercise name"
-                placeholderTextColor="#6b6b6b"
-                value={customName}
-                onChangeText={setCustomName}
-                returnKeyType="next"
-              />
-              <TextInput
-                style={{ backgroundColor: '#2d2d2d', color: '#e5e2e1', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7, marginBottom: 8 }}
-                placeholder="Muscle group"
-                placeholderTextColor="#6b6b6b"
-                value={customMuscle}
-                onChangeText={setCustomMuscle}
-                returnKeyType="done"
-              />
-              <TouchableOpacity
-                style={{ backgroundColor: customName.trim() ? '#f2ca50' : '#2d2d2d', borderRadius: 8, paddingVertical: 9, alignItems: 'center' }}
-                onPress={() => customName.trim() && addExercise(customName.trim(), customMuscle.trim() || 'Other')}
-              >
-                <Text style={{ color: customName.trim() ? '#3d2e00' : '#6b6b6b', fontWeight: 'bold' }}>Add Custom</Text>
-              </TouchableOpacity>
+        ListEmptyComponent={
+          exercises.length === 0 && !showPicker ? (
+            <View style={{ alignItems: 'center', paddingVertical: 48 }}>
+              <Text style={{ color: '#6b6b6b', textAlign: 'center' }}>No exercises yet.{'\n'}Tap "+ Add Exercise" to build your plan.</Text>
             </View>
+          ) : null
+        }
+        ListFooterComponent={
+          <>
+            {/* Add Exercise toggle */}
+            <TouchableOpacity
+              style={{ borderWidth: 2, borderStyle: 'dashed', borderColor: '#2d2d2d', borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginBottom: 12, flexDirection: 'row', justifyContent: 'center' }}
+              onPress={() => setShowPicker(!showPicker)}
+            >
+              <Text style={{ color: '#b3b3b3', fontWeight: '600' }}>{showPicker ? '− Close' : '+ Add Exercise'}</Text>
+            </TouchableOpacity>
 
-            {/* Presets */}
-            <Text style={{ color: '#b3b3b3', fontSize: 12, fontWeight: '600', paddingHorizontal: 12, paddingTop: 10, paddingBottom: 4, letterSpacing: 1, textTransform: 'uppercase' }}>Quick Pick</Text>
-            {PRESET_EXERCISES.map(ex => (
-              <TouchableOpacity
-                key={ex.name}
-                style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#2d2d2d' }}
-                onPress={() => addExercise(ex.name, ex.muscle_group)}
-              >
-                <Text style={{ color: '#e5e2e1', fontWeight: '500' }}>{ex.name}</Text>
-                <Text style={{ color: '#f2ca50', fontSize: 11, fontWeight: '600', textTransform: 'uppercase' }}>{ex.muscle_group}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-      </ScrollView>
+            {/* Picker */}
+            {showPicker && (
+              <View style={{ backgroundColor: '#232323', borderRadius: 12, borderWidth: 1, borderColor: '#2d2d2d', marginBottom: 32, overflow: 'hidden' }}>
+                {/* Custom */}
+                <View style={{ padding: 12, borderBottomWidth: 1, borderBottomColor: '#2d2d2d' }}>
+                  <Text style={{ color: '#e5e2e1', fontWeight: 'bold', marginBottom: 8 }}>Custom Exercise</Text>
+                  <TextInput
+                    style={{ backgroundColor: '#2d2d2d', color: '#e5e2e1', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7, marginBottom: 6 }}
+                    placeholder="Exercise name"
+                    placeholderTextColor="#6b6b6b"
+                    value={customName}
+                    onChangeText={setCustomName}
+                    returnKeyType="next"
+                  />
+                  <TextInput
+                    style={{ backgroundColor: '#2d2d2d', color: '#e5e2e1', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7, marginBottom: 8 }}
+                    placeholder="Muscle group"
+                    placeholderTextColor="#6b6b6b"
+                    value={customMuscle}
+                    onChangeText={setCustomMuscle}
+                    returnKeyType="done"
+                  />
+                  <TouchableOpacity
+                    style={{ backgroundColor: customName.trim() ? '#f2ca50' : '#2d2d2d', borderRadius: 8, paddingVertical: 9, alignItems: 'center' }}
+                    onPress={() => customName.trim() && addExercise(customName.trim(), customMuscle.trim() || 'Other')}
+                  >
+                    <Text style={{ color: customName.trim() ? '#3d2e00' : '#6b6b6b', fontWeight: 'bold' }}>Add Custom</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Presets */}
+                <Text style={{ color: '#b3b3b3', fontSize: 12, fontWeight: '600', paddingHorizontal: 12, paddingTop: 10, paddingBottom: 4, letterSpacing: 1, textTransform: 'uppercase' }}>Quick Pick</Text>
+                {PRESET_EXERCISES.map(ex => (
+                  <TouchableOpacity
+                    key={ex.name}
+                    style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#2d2d2d' }}
+                    onPress={() => addExercise(ex.name, ex.muscle_group)}
+                  >
+                    <Text style={{ color: '#e5e2e1', fontWeight: '500' }}>{ex.name}</Text>
+                    <Text style={{ color: '#f2ca50', fontSize: 11, fontWeight: '600', textTransform: 'uppercase' }}>{ex.muscle_group}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </>
+        }
+      />
     </View>
   );
 }

@@ -2,24 +2,25 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
   TextInput,
   Alert,
   Modal,
   Image,
   ActivityIndicator,
 } from 'react-native';
+import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import * as FileSystem from 'expo-file-system';
-import { Plus, X, Trash2, Dumbbell, Link, Image as ImageIcon } from 'lucide-react-native';
+import { Plus, X, Trash2, Dumbbell, Link, Image as ImageIcon, GripVertical } from 'lucide-react-native';
 
 interface Exercise {
   id: number;
   name: string;
   muscle_group: string;
   local_image_uri: string | null;
+  order_index: number;
 }
 
 export default function ExercisesScreen() {
@@ -34,7 +35,7 @@ export default function ExercisesScreen() {
   const [imageUrl, setImageUrl] = useState('');
 
   const loadExercises = async () => {
-    const rows = await db.getAllAsync<Exercise>('SELECT * FROM exercises ORDER BY name ASC');
+    const rows = await db.getAllAsync<Exercise>('SELECT * FROM exercises ORDER BY order_index ASC, name ASC');
     setExercises(rows);
   };
 
@@ -82,8 +83,8 @@ export default function ExercisesScreen() {
     }
 
     await db.runAsync(
-      'INSERT INTO exercises (name, muscle_group, local_image_uri) VALUES (?, ?, ?)',
-      [name.trim(), muscleGroup.trim(), localUri]
+      'INSERT INTO exercises (name, muscle_group, local_image_uri, order_index) VALUES (?, ?, ?, ?)',
+      [name.trim(), muscleGroup.trim(), localUri, exercises.length]
     );
 
     resetForm();
@@ -117,6 +118,13 @@ export default function ExercisesScreen() {
     ]);
   };
 
+  const onDragEnd = async ({ data }: { data: Exercise[] }) => {
+    setExercises(data);
+    for (let i = 0; i < data.length; i++) {
+      await db.runAsync('UPDATE exercises SET order_index = ? WHERE id = ?', [i, data[i].id]);
+    }
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: '#131313' }}>
       {/* Header */}
@@ -130,15 +138,25 @@ export default function ExercisesScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16 }} contentContainerStyle={{ paddingBottom: 80 }}>
-        {exercises.length === 0 ? (
+      <DraggableFlatList
+        data={exercises}
+        keyExtractor={item => item.id.toString()}
+        onDragEnd={onDragEnd}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 80 }}
+        ListEmptyComponent={
           <View style={{ alignItems: 'center', paddingVertical: 48, backgroundColor: '#232323', borderRadius: 12, borderWidth: 1, borderColor: '#2d2d2d', borderStyle: 'dashed' }}>
             <Dumbbell color="#6b6b6b" size={32} style={{ marginBottom: 12 }} />
             <Text style={{ color: '#6b6b6b', textAlign: 'center' }}>No custom exercises yet.{'\n'}Tap the + button to add one.</Text>
           </View>
-        ) : (
-          exercises.map(ex => (
-            <View key={ex.id} style={{ backgroundColor: '#232323', borderRadius: 12, marginBottom: 12, borderWidth: 1, borderColor: '#2d2d2d', overflow: 'hidden' }}>
+        }
+        renderItem={({ item: ex, drag, isActive }: RenderItemParams<Exercise>) => (
+          <ScaleDecorator>
+            <TouchableOpacity 
+              onLongPress={drag} 
+              delayLongPress={200}
+              activeOpacity={0.7}
+              style={{ backgroundColor: '#232323', borderRadius: 12, marginBottom: 12, borderWidth: 1, borderColor: isActive ? '#f2ca50' : '#2d2d2d', overflow: 'hidden' }}
+            >
               {ex.local_image_uri ? (
                 <View style={{ backgroundColor: '#1c1b1b', height: 160, width: '100%', alignItems: 'center', justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: '#2d2d2d' }}>
                   <Image source={{ uri: ex.local_image_uri }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
@@ -159,10 +177,10 @@ export default function ExercisesScreen() {
                   <Trash2 color="#ef4444" size={20} />
                 </TouchableOpacity>
               </View>
-            </View>
-          ))
+            </TouchableOpacity>
+          </ScaleDecorator>
         )}
-      </ScrollView>
+      />
 
       {/* Add Exercise Modal */}
       <Modal transparent visible={showAddModal} animationType="slide">

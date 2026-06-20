@@ -1,14 +1,16 @@
-import { View, Text, TouchableOpacity, FlatList, TextInput, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, Alert } from 'react-native';
+import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useState, useEffect, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { Plus, Trash2, ChevronRight } from 'lucide-react-native';
+import { Plus, Trash2, ChevronRight, GripVertical } from 'lucide-react-native';
 
 interface Plan {
   id: number;
   name: string;
   description: string;
   exercise_count: number;
+  order_index: number;
 }
 
 export default function PlansScreen({ navigation }: any) {
@@ -20,12 +22,12 @@ export default function PlansScreen({ navigation }: any) {
 
   const loadPlans = async () => {
     const loaded = await db.getAllAsync<Plan>(`
-      SELECT p.id, p.name, p.description,
+      SELECT p.id, p.name, p.description, p.order_index,
         COUNT(wpe.id) as exercise_count
       FROM workout_plans p
       LEFT JOIN workout_plan_exercises wpe ON wpe.workout_plan_id = p.id
       GROUP BY p.id
-      ORDER BY p.id DESC
+      ORDER BY p.order_index ASC, p.id DESC
     `);
     setPlans(loaded);
   };
@@ -40,8 +42,8 @@ export default function PlansScreen({ navigation }: any) {
   const handleAddPlan = async () => {
     if (!newPlanName.trim()) return;
     await db.runAsync(
-      'INSERT INTO workout_plans (name, description) VALUES (?, ?)',
-      [newPlanName.trim(), newPlanDesc.trim()]
+      'INSERT INTO workout_plans (name, description, order_index) VALUES (?, ?, ?)',
+      [newPlanName.trim(), newPlanDesc.trim(), plans.length]
     );
     setNewPlanName('');
     setNewPlanDesc('');
@@ -61,6 +63,13 @@ export default function PlansScreen({ navigation }: any) {
         },
       },
     ]);
+  };
+
+  const onDragEnd = async ({ data }: { data: Plan[] }) => {
+    setPlans(data);
+    for (let i = 0; i < data.length; i++) {
+      await db.runAsync('UPDATE workout_plans SET order_index = ? WHERE id = ?', [i, data[i].id]);
+    }
   };
 
   return (
@@ -112,9 +121,10 @@ export default function PlansScreen({ navigation }: any) {
         </View>
       )}
 
-      <FlatList
+      <DraggableFlatList
         data={plans}
         keyExtractor={item => item.id.toString()}
+        onDragEnd={onDragEnd}
         contentContainerStyle={{ paddingBottom: 80 }}
         ListEmptyComponent={
           <View className="items-center py-16">
@@ -123,33 +133,37 @@ export default function PlansScreen({ navigation }: any) {
             </Text>
           </View>
         }
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            className="bg-surface-container rounded-xl p-4 mb-3 border border-surface-bright flex-row items-center"
-            onPress={() => navigation.navigate('PlanDetail', { planId: item.id, planName: item.name })}
-            activeOpacity={0.7}
-          >
-            {/* Gold accent bar */}
-            <View className="w-1 rounded-full bg-primary mr-3 self-stretch" />
-            <View className="flex-1">
-              <Text className="text-on-surface font-bold text-lg">{item.name}</Text>
-              {item.description ? (
-                <Text className="text-on-variant mt-0.5 text-sm">{item.description}</Text>
-              ) : null}
-              <Text className="text-primary text-xs font-semibold mt-1 uppercase tracking-widest">
-                {item.exercise_count} exercise{item.exercise_count !== 1 ? 's' : ''}
-              </Text>
-            </View>
-            <View className="flex-row items-center">
-              <TouchableOpacity
-                onPress={() => handleDelete(item.id, item.name)}
-                className="p-2 mr-1"
-              >
-                <Trash2 color="#6b6b6b" size={18} />
-              </TouchableOpacity>
-              <ChevronRight color="#6b6b6b" size={20} />
-            </View>
-          </TouchableOpacity>
+        renderItem={({ item, drag, isActive }: RenderItemParams<Plan>) => (
+          <ScaleDecorator>
+            <TouchableOpacity
+              className={`bg-surface-container rounded-xl p-4 mb-3 border border-surface-bright flex-row items-center ${isActive ? 'border-primary' : ''}`}
+              onPress={() => navigation.navigate('PlanDetail', { planId: item.id, planName: item.name })}
+              onLongPress={drag}
+              delayLongPress={200}
+              activeOpacity={0.7}
+            >
+              {/* Gold accent bar */}
+              <View className="w-1 rounded-full bg-primary mr-3 self-stretch" />
+              <View className="flex-1">
+                <Text className="text-on-surface font-bold text-lg">{item.name}</Text>
+                {item.description ? (
+                  <Text className="text-on-variant mt-0.5 text-sm">{item.description}</Text>
+                ) : null}
+                <Text className="text-primary text-xs font-semibold mt-1 uppercase tracking-widest">
+                  {item.exercise_count} exercise{item.exercise_count !== 1 ? 's' : ''}
+                </Text>
+              </View>
+              <View className="flex-row items-center">
+                <TouchableOpacity
+                  onPress={() => handleDelete(item.id, item.name)}
+                  className="p-2 mr-1"
+                >
+                  <Trash2 color="#6b6b6b" size={18} />
+                </TouchableOpacity>
+                <ChevronRight color="#6b6b6b" size={20} />
+              </View>
+            </TouchableOpacity>
+          </ScaleDecorator>
         )}
       />
     </View>

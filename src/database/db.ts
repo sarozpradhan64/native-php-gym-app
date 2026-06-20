@@ -72,4 +72,18 @@ export async function initializeDatabase(db: SQLite.SQLiteDatabase) {
   } catch (e) {
     // Column likely already exists
   }
+
+  // Migration for order_index in workout_plans
+  try {
+    await db.execAsync('ALTER TABLE workout_plans ADD COLUMN order_index INTEGER DEFAULT 0;');
+  } catch (e) {
+    // Column likely already exists
+  }
+
+  // Migration for order_index in exercises
+  try {
+    await db.execAsync('ALTER TABLE exercises ADD COLUMN order_index INTEGER DEFAULT 0;');
+  } catch (e) {
+    // Column likely already exists
+  }
 }
