@@ -72,6 +72,15 @@ export async function initializeDatabase(db: SQLite.SQLiteDatabase) {
       height REAL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS workout_reminders (
+      day INTEGER PRIMARY KEY,
+      enabled INTEGER DEFAULT 0,
+      hour INTEGER DEFAULT 7,
+      minute INTEGER DEFAULT 0
+    );
+
+    INSERT OR IGNORE INTO workout_reminders (day) VALUES (0),(1),(2),(3),(4),(5),(6);
   `);
 
   // Migration for existing tables to add local_image_uri
