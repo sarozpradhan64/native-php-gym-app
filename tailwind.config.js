@@ -17,6 +17,11 @@ module.exports = {
           variant: '#b3b3b3',
           primary: '#3d2e00',
         }
+      },
+      fontFamily: {
+        sans: ['NunitoSans_400Regular', 'sans-serif'],
+        semibold: ['NunitoSans_600SemiBold', 'sans-serif'],
+        bold: ['NunitoSans_700Bold', 'sans-serif'],
       }
     },
   },
