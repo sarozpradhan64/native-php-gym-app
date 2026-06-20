@@ -1,5 +1,6 @@
 import { View, Text, ScrollView, Switch, TouchableOpacity, TextInput, Modal } from 'react-native';
 import { useState } from 'react';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Moon, Bell, Info, Trash2, User, X } from 'lucide-react-native';
 import { useSQLiteContext } from 'expo-sqlite';
 import { Alert } from 'react-native';
@@ -12,6 +13,7 @@ export default function SettingsScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [showEditProfile, setShowEditProfile] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Edit Profile State
   const [editName, setEditName] = useState(profile?.name || '');
@@ -221,13 +223,33 @@ export default function SettingsScreen() {
             />
 
             <Text style={{ color: '#b3b3b3', fontSize: 12, marginBottom: 6, fontWeight: '600' }}>BIRTHDAY</Text>
-            <TextInput
-              style={{ backgroundColor: '#2d2d2d', color: '#e5e2e1', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16, marginBottom: 16 }}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor="#6b6b6b"
-              value={editBirthday}
-              onChangeText={setEditBirthday}
-            />
+            <TouchableOpacity onPress={() => setShowDatePicker(true)}>
+              <View pointerEvents="none">
+                <TextInput
+                  style={{ backgroundColor: '#2d2d2d', color: '#e5e2e1', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16, marginBottom: 16 }}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor="#6b6b6b"
+                  value={editBirthday}
+                  editable={false}
+                />
+              </View>
+            </TouchableOpacity>
+
+            {showDatePicker && (
+              <DateTimePicker
+                value={editBirthday ? new Date(editBirthday) : new Date()}
+                mode="date"
+                display="default"
+                maximumDate={new Date()}
+                onChange={(event, selectedDate) => {
+                  setShowDatePicker(false);
+                  if (event.type === 'set' && selectedDate) {
+                    const formattedDate = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
+                    setEditBirthday(formattedDate);
+                  }
+                }}
+              />
+            )}
 
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               <View style={{ flex: 1, marginRight: 8 }}>

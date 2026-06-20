@@ -1,5 +1,6 @@
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { useState } from 'react';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useUserStore } from '../store/useUserStore';
 import { Dumbbell } from 'lucide-react-native';
@@ -12,6 +13,7 @@ export default function OnboardingScreen() {
   const [birthday, setBirthday] = useState('');
   const [weight, setWeight] = useState('');
   const [height, setHeight] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -78,13 +80,33 @@ export default function OnboardingScreen() {
           />
 
           <Text style={{ color: '#b3b3b3', fontSize: 12, fontWeight: '600', marginBottom: 6, letterSpacing: 1 }}>BIRTHDAY (OPTIONAL)</Text>
-          <TextInput
-            style={{ backgroundColor: '#2d2d2d', color: '#e5e2e1', borderRadius: 10, padding: 14, fontSize: 16, marginBottom: 20 }}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor="#6b6b6b"
-            value={birthday}
-            onChangeText={setBirthday}
-          />
+          <TouchableOpacity onPress={() => setShowDatePicker(true)}>
+            <View pointerEvents="none">
+              <TextInput
+                style={{ backgroundColor: '#2d2d2d', color: '#e5e2e1', borderRadius: 10, padding: 14, fontSize: 16, marginBottom: 20 }}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor="#6b6b6b"
+                value={birthday}
+                editable={false}
+              />
+            </View>
+          </TouchableOpacity>
+
+          {showDatePicker && (
+            <DateTimePicker
+              value={birthday ? new Date(birthday) : new Date()}
+              mode="date"
+              display="default"
+              maximumDate={new Date()}
+              onChange={(event, selectedDate) => {
+                setShowDatePicker(false);
+                if (event.type === 'set' && selectedDate) {
+                  const formattedDate = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
+                  setBirthday(formattedDate);
+                }
+              }}
+            />
+          )}
 
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
             <View style={{ flex: 1, marginRight: 10 }}>
